@@ -23,3 +23,12 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+## Main Thanks
+
+- **PyQt6** – [PyQt6](https://www.riverbankcomputing.com/software/pyqt/)
+- **pytesseract** – [pytesseract](https://github.com/madmaze/pytesseract)
+- **Pillow (PIL)** – [Pillow](https://python-pillow.org/)
+- **mss** – [mss](https://github.com/BoboTiG/python-mss)
+- **ChatTTS** – [ChatTTS](https://github.com/2noise/ChatTTS)
+- **torch / torchaudio** – [PyTorch](https://pytorch.org/)
+- **playsound** – [playsound](https://github.com/TaylorSMarks/playsound)
