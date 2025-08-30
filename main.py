@@ -3,7 +3,13 @@ import threading
 import pytesseract
 from PIL import Image
 import mss
-import pyttsx3
+import torch
+import torchaudio
+import tempfile
+import os
+import ChatTTS
+from playsound import playsound 
+import numpy as np
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QMainWindow, QPushButton, QLabel, QVBoxLayout, QHBoxLayout
@@ -11,12 +17,31 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QRect, QPoint, QTimer
 from PyQt6.QtGui import QPainter, QPen, QGuiApplication
 
-# if your tesseract is not in the defult location you can do this
-# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+# --- Init ChatTTS ---
+
+device = "mps" if torch.mps.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else device
+print(f"Using device : {device}")
+chat = ChatTTS.Chat()
+chat.load(compile=False)  
+rand_spk = chat.sample_random_speaker()
+# if you prefer specific speaker
+# rand_spk = torch.load("speaker_1.pt")
+
+
+params_infer_code = ChatTTS.Chat.InferCodeParams(
+    spk_emb=rand_spk,
+    temperature=0.3,
+    top_P=0.7,
+    top_K=20,
+)
+params_refine_text = ChatTTS.Chat.RefineTextParams(
+    prompt='[oral_2][laugh_0][break_6]',
+)
 
 
 class SnippingWidget(QWidget):
-    """select screen"""
     def __init__(self, callback):
         super().__init__()
         self.callback = callback
@@ -29,7 +54,7 @@ class SnippingWidget(QWidget):
         self.setStyleSheet("background-color: rgba(0,0,0,80);")
         self.setCursor(Qt.CursorShape.CrossCursor)
 
-        self.show()  
+        self.show()
 
     def paintEvent(self, event):
         if not self.begin.isNull() and not self.end.isNull():
@@ -58,20 +83,14 @@ class SnippingWidget(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("OCR Reader")
+        self.setWindowTitle("OCR + ChatTTS Reader")
 
         self.monitoring_rect = None
         self.last_text = ""
 
-        # TTS
-        self.tts = pyttsx3.init()
-        self.tts.setProperty("rate", 175)
-
-        # Timer
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.do_ocr)
 
-        # --- UI ---
         central = QWidget()
         layout = QVBoxLayout(central)
 
@@ -110,7 +129,7 @@ class MainWindow(QMainWindow):
     def start_monitor(self):
         if self.monitoring_rect:
             self.last_text = ""
-            self.timer.start(3000)  # 每 3 秒识别一次
+            self.timer.start(2000)  # 每 3 秒 OCR 一次
             self.btn_start.setEnabled(False)
             self.btn_stop.setEnabled(True)
             self.btn_select.setEnabled(False)
@@ -121,12 +140,25 @@ class MainWindow(QMainWindow):
         self.btn_start.setEnabled(True)
         self.btn_select.setEnabled(True)
         self.btn_stop.setEnabled(False)
-        self.label.setText("Monitor Stop")
+        self.label.setText("Monitor Stopped")
 
     def speak(self, text):
+        """ChatTTS to speak"""
         def run():
-            self.tts.say(text)
-            self.tts.runAndWait()
+            try:
+                wavs = chat.infer(
+                    [text],
+                    params_refine_text=params_refine_text,
+                    params_infer_code=params_infer_code,
+                )
+                wav_tensor = torch.from_numpy(wavs[0]).unsqueeze(0)
+                tmp_path = tempfile.mktemp(suffix=".wav")
+                torchaudio.save(tmp_path, wav_tensor, 24000)
+                playsound(tmp_path)
+                os.remove(tmp_path)
+            except Exception as e:
+                print("TTS Error:", e)
+
         threading.Thread(target=run, daemon=True).start()
 
     def do_ocr(self):
