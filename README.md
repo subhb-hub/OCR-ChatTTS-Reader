@@ -23,6 +23,40 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+if you want to fix a speaker, you can:
+```bash
+python Test_ChatTTS.py
+```
+over and over again to get your favorite speaker and then load it by change this in main.py:
+
+```python
+# --- 初始化 ChatTTS ---
+device = "mps" if torch.mps.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else device
+print(f"Using device : {device}")
+chat = ChatTTS.Chat()
+chat.load(compile=False)  
+rand_spk = chat.sample_random_speaker()
+# if you prefer specific speaker
+# rand_spk = torch.load("speaker_1.pt")
+```
+
+to this:
+
+```python
+# --- 初始化 ChatTTS ---
+device = "mps" if torch.mps.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else device
+print(f"Using device : {device}")
+chat = ChatTTS.Chat()
+chat.load(compile=False)  
+rand_spk = chat.sample_random_speaker()
+# if you prefer specific speaker
+rand_spk = torch.load("speaker_1.pt")
+```
+
+
+
 ## Main Thanks
 
 - **PyQt6** – [PyQt6](https://www.riverbankcomputing.com/software/pyqt/)
