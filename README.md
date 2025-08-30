@@ -17,3 +17,7 @@ git clone https://github.com/yourname/OCR-ChatTTS-Reader.git
 cd OCR-ChatTTS-Reader
 conda create -n ocr python=3.10 conda activate ocr
 pip install -r requirements.txt
+
+## Run
+```bash
+python main.py
